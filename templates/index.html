@@ -1,19 +1,21 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>My First Website</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <title>Home</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <body>
-  <nav>
-    <a href="/">Home</a> |
-    <a href="/about">About</a> |
-    <a href="/contact">Contact</a>
-  </nav>
-
-  <h1>Welcome to My Portfolio</h1>
-  <p>Hi, I’m Kiran — a commerce student exploring web development!</p>
-</body>
+    <header>
+        <h1>Welcome to My Website</h1>
+    </header>
+    <nav>
+        <a href="/">Home</a> |
+        <a href="/about">About</a> |
+        <a href="/contact">Contact</a>
+    </nav>
+    <main>
+        <p>This is the homepage!</p>
+    </main>
 </body>
 </html>
