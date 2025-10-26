@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Attendance System</title>
+  <style>
+    body{font-family:sans-serif;max-width:900px;margin:30px auto;padding:20px}
+    table{width:100%;border-collapse:collapse}
+    th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
+    button{padding:8px 12px;border:none;border-radius:6px;background:#007bff;color:white;cursor:pointer}
+    button.secondary{background:#f0f0f0;color:#222}
+  </style>
+</head>
+<body>
+  <h1>Attendance Tracker (Flask + Render)</h1>
+
+  <label>Date: <input id="dateInput" type="date"></label>
+  <input id="nameInput" type="text" placeholder="Add Student">
+  <button id="addBtn">Add</button>
+  <button id="saveBtn">Save Attendance</button>
+  <button id="loadBtn" class="secondary">Load Saved</button>
+
+  <table id="table">
+    <thead>
+      <tr><th>#</th><th>Student</th><th>Present</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Saved Records</h2>
+  <ul id="recordList"></ul>
+
+  <script>
+    const dateInput = document.getElementById('dateInput');
+    const nameInput = document.getElementById('nameInput');
+    const addBtn = document.getElementById('addBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const loadBtn = document.getElementById('loadBtn');
+    const tableBody = document.querySelector('#table tbody');
+    const recordList = document.getElementById('recordList');
+
+    let students = [];
+    dateInput.value = new Date().toISOString().split('T')[0];
+
+    addBtn.onclick = () => {
+      const name = nameInput.value.trim();
+      if (!name) return alert("Enter a name");
+      students.push({name, present:false});
+      nameInput.value = "";
+      renderTable();
+    };
+
+    function renderTable(){
+      tableBody.innerHTML = "";
+      students.forEach((s,i)=>{
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${i+1}</td><td>${s.name}</td>
+          <td><input type="checkbox" ${s.present?'checked':''}></td>`;
+        row.querySelector('input').onchange = e=> s.present = e.target.checked;
+        tableBody.appendChild(row);
+      });
+    }
+
+    saveBtn.onclick = async ()=>{
+      if (students.length===0) return alert("Add at least one student.");
+      const data = {
+        date: dateInput.value,
+        records: Object.fromEntries(students.map(s=>[s.name,s.present]))
+      };
+      const res = await fetch('/api/save', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      });
+      const msg = await res.json();
+      alert(msg.message || 'Saved');
+      loadRecords();
+    };
+
+    loadBtn.onclick = loadRecords;
+
+    async function loadRecords(){
+      const res = await fetch('/api/records');
+      const data = await res.json();
+      recordList.innerHTML = "";
+      data.forEach(rec=>{
+        const li = document.createElement('li');
+        const present = Object.values(rec.records).filter(v=>v).length;
+        li.innerHTML = `<strong>${rec.date}</strong> — ${present}/${Object.keys(rec.records).length} present 
+          <button data-date="${rec.date}" class="secondary">Delete</button>`;
+        li.querySelector('button').onclick = ()=>deleteRecord(rec.date);
+        recordList.appendChild(li);
+      });
+    }
+
+    async function deleteRecord(date){
+      if(!confirm(`Delete record for ${date}?`)) return;
+      await fetch(`/api/delete/${date}`, {method:'DELETE'});
+      loadRecords();
+    }
+
+    loadRecords();
+  </script>
+</body>
+</html>

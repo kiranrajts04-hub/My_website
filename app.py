@@ -1,54 +1,55 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request, jsonify
+import json, os
+from datetime import datetime
 
 app = Flask(__name__)
 
-@app.route('/')
-def home():
-    return render_template('index.html')
+DATA_FILE = os.path.join("data", "attendance.json")
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# Ensure data folder exists
+os.makedirs("data", exist_ok=True)
+if not os.path.exists(DATA_FILE):
+    with open(DATA_FILE, "w") as f:
+        json.dump([], f)
 
-from flask import Flask, render_template, request
+def load_records():
+    with open(DATA_FILE, "r") as f:
+        return json.load(f)
 
-app = Flask(__name__)
+def save_records(records):
+    with open(DATA_FILE, "w") as f:
+        json.dump(records, f, indent=2)
 
-@app.route('/')
-def home():
-    return render_template('index.html')
+@app.route("/")
+def index():
+    return render_template("index.html")
 
-@app.route('/submit', methods=['POST'])
-def submit():
-    name = request.form['username']
-    message = request.form['message']
-    return f"Thank you, {name}! You said: '{message}'"
+@app.route("/api/save", methods=["POST"])
+def save_attendance():
+    data = request.get_json()
+    if not data or "date" not in data or "records" not in data:
+        return jsonify({"error": "Invalid data"}), 400
 
-if __name__ == '__main__':
-    app.run(debug=True)
+    records = load_records()
+    # Replace if date exists
+    existing = next((r for r in records if r["date"] == data["date"]), None)
+    if existing:
+        records = [r for r in records if r["date"] != data["date"]]
+    data["savedAt"] = datetime.now().isoformat()
+    records.append(data)
+    save_records(records)
+    return jsonify({"message": "Attendance saved"}), 200
 
-from flask import Flask, render_template, request
+@app.route("/api/records", methods=["GET"])
+def get_records():
+    return jsonify(load_records())
 
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return render_template('index.html')
-
-@app.route('/about')
-def about():
-    return render_template('about.html')
-
-@app.route('/contact')
-def contact():
-    return render_template('contact.html')
-
-@app.route('/submit', methods=['POST'])
-def submit():
-    name = request.form['username']
-    message = request.form['message']
-    return f"Thank you, {name}! You said: '{message}'"
-import os
+@app.route("/api/delete/<date>", methods=["DELETE"])
+def delete_record(date):
+    records = load_records()
+    records = [r for r in records if r["date"] != date]
+    save_records(records)
+    return jsonify({"message": f"Deleted records for {date}"}), 200
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=10000)
